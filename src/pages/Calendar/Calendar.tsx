@@ -1,8 +1,8 @@
 export default function Calendar() {
   return (
-    <div>
-      <h3>Calendar Widget</h3>
-      <p>Placeholder for calendar view</p>
+    <div className="bg-slate-900 p-8">
+      <h3 className="text-lg font-semibold text-white">Calendar</h3>
+      <p className="text-gray-400">Placeholder for Calendar view</p>
     </div>
   );
 }
