@@ -118,3 +118,12 @@
     @apply bg-background text-foreground;
   }
 }
+.progress-circle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 3px solid #4b5563;
+  border-top-color: var(--color);
+  transform: rotate(calc(3.6deg * var(--progress)));
+  background: conic-gradient(var(--color) calc(3.6deg * var(--progress)), #4b5563 0deg);
+}

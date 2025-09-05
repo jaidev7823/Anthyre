@@ -5,7 +5,7 @@ import { syncCalendar } from '@/lib/utils';
 
 export default function Today() {
   return (
-    <div className="grid grid-cols-3 gap-8">
+    <div className="grid grid-cols-3 p-8 gap-8">
       {/* Main Body (Unchanged) */}
       <div className="col-span-2 space-y-4">
         {/* Time Block: 8:00 AM - 9:00 AM */}
