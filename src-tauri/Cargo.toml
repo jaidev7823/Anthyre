@@ -29,3 +29,6 @@ google-calendar3 = "5.0.2+20240611" # Google Calendar API client
 yup-oauth2 = "8.3.2"               # Handles OAuth tokens
 tokio = { version = "1", features = ["full"] }
 chrono = "0.4"                     # Datetime handling
+dotenvy = "0.15"
+urlencoding = "2.1"
+webbrowser = "0.8"

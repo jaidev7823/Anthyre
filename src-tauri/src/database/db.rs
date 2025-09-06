@@ -3,7 +3,7 @@ use rusqlite::{Connection, Result};
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::fs;
-
+use super::seeder; 
 use super::schema; // bring in schema.rs
 
 static DB_CONNECTION: Lazy<Mutex<Connection>> = Lazy::new(|| {
@@ -35,7 +35,17 @@ pub fn connection() -> std::sync::MutexGuard<'static, Connection> {
 
 pub fn init() -> Result<()> {
     let conn = connection();
+
+    // Run migrations
     conn.execute_batch(&schema::create_all_sql())?;
     println!("✅ Database initialized with full schema");
+
+    // Seed initial data (only if empty)
+    if let Err(e) = seeder::seed_credentials(&conn) {
+        eprintln!("⚠️ Seeding credentials failed: {}", e);
+    } else {
+        println!("✅ Credentials seeded (dummy values)");
+    }
+
     Ok(())
 }

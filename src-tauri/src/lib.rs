@@ -1,28 +1,30 @@
-mod database;
+mod auth;
 mod calendar;
+mod database;
 
 use tauri::Manager;
 
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    dotenvy::dotenv().ok();
+
     tauri::Builder::default()
-        .setup(|app| {
+        .setup(|_app| {
             if let Err(e) = database::init() {
                 eprintln!("❌ Database init failed: {}", e);
                 std::process::exit(1);
             }
-            println!("✅ Anthyre initialized");
+
+            let conn = database::connection();
+            if let Err(e) = database::seeder::seed_credentials(&conn) {
+                eprintln!("⚠️ Seeding credentials failed: {}", e);
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            greet,
             calendar::test_calendar,
             calendar::add_test_event,
+            auth::login_with_google,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

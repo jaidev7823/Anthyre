@@ -93,15 +93,32 @@ CREATE TABLE IF NOT EXISTS distractions (
 );
 ";
 
+pub const CREATE_CREDENTIALS_TABLE: &str = "
+CREATE TABLE IF NOT EXISTS credentials (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id TEXT NOT NULL,
+    project_id TEXT NOT NULL,
+    auth_uri TEXT NOT NULL,
+    token_uri TEXT NOT NULL,
+    auth_provider_x509_cert_url TEXT NOT NULL,
+    client_secret TEXT NOT NULL,
+    redirect_uris TEXT NOT NULL, -- stored as JSON array string
+    scopes TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+";
+
 /// Returns all schema SQL as a single string
 pub fn create_all_sql() -> String {
     format!(
-        "{}{}{}{}{}{}",
+        "{}{}{}{}{}{}{}",
         CREATE_USERS_TABLE,
         CREATE_CALENDAR_TOKENS_TABLE,
         CREATE_EVENTS_TABLE,
         CREATE_POMODORO_TABLE,
         CREATE_DAILY_SUMMARY_TABLE,
-        CREATE_DISTRACTIONS_TABLE
+        CREATE_DISTRACTIONS_TABLE,
+        CREATE_CREDENTIALS_TABLE
     )
 }

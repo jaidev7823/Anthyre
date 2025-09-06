@@ -1,12 +1,16 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { invoke } from "@tauri-apps/api/core";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
+
 export async function syncCalendar() {
-  console.log('Tauri: sync_calendar invoked');
-  // Uncomment when Tauri is set up:
-  // import { invoke } from '@tauri-apps/api/tauri';
-  // await invoke('sync_calendar');
+  try {
+    const result = await invoke("login_with_google");
+    console.log("Auth result:", result);
+  } catch (err) {
+    console.error("Login failed:", err);
+  }
 }
