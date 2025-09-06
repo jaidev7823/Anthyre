@@ -14,16 +14,20 @@ pub fn seed_credentials(conn: &Connection) -> Result<()> {
         let now = Utc::now().to_rfc3339();
 
         // Load from env (dotenvy::dotenv() must be called once in main/lib.rs)
-        let client_id = std::env::var("GOOGLE_CLIENT_ID")
-            .unwrap_or_else(|_| "CHANGE_ME_CLIENT_ID".into());
-        let project_id = std::env::var("GOOGLE_PROJECT_ID")
-            .unwrap_or_else(|_| "CHANGE_ME_PROJECT_ID".into());
+        let client_id =
+            std::env::var("GOOGLE_CLIENT_ID").unwrap_or_else(|_| "CHANGE_ME_CLIENT_ID".into());
+        let project_id =
+            std::env::var("GOOGLE_PROJECT_ID").unwrap_or_else(|_| "CHANGE_ME_PROJECT_ID".into());
         let client_secret = std::env::var("GOOGLE_CLIENT_SECRET")
             .unwrap_or_else(|_| "CHANGE_ME_CLIENT_SECRET".into());
-        let redirect_uris = std::env::var("GOOGLE_REDIRECT_URIS")
-            .unwrap_or_else(|_| r#"["http://localhost:3000/oauth2callback"]"#.into());
-        let scopes = std::env::var("GOOGLE_SCOPES")
-            .unwrap_or_else(|_| "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile".into());
+        let redirect_uris = std::env::var("GOOGLE_REDIRECT_URI")
+            .unwrap_or_else(|_| r#"["http://localhost:1421/oauth2callback"]"#.into());
+        let scopes = std::env::var("GOOGLE_SCOPES").unwrap_or_else(|_| {
+            "https://www.googleapis.com/auth/calendar \
+             https://www.googleapis.com/auth/userinfo.email \
+             https://www.googleapis.com/auth/userinfo.profile"
+                .into()
+        });
 
         // Constants from Google docs
         let auth_uri = "https://accounts.google.com/o/oauth2/auth";
