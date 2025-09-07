@@ -1,9 +1,6 @@
 use chrono::{DateTime, Duration, Timelike, Utc, Local};
 use reqwest::Client;
-use rusqlite::params;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-use std::collections::HashMap as Map;
 use crate::database;
 
 #[derive(Debug)]
