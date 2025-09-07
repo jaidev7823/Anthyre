@@ -25,6 +25,7 @@ pub fn run() {
             calendar::test_calendar,
             calendar::add_test_event,
             auth::login_with_google,
+            auth::check_calendar_token,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

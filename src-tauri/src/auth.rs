@@ -22,7 +22,7 @@ pub struct AuthResult {
 
 #[tauri::command]
 pub async fn login_with_google() -> Result<AuthResult, String> {
-    let (credential_id, client_id, client_secret, redirect_uris, scopes) = {
+    let (credential_id, client_id, client_secret, _redirect_uris, scopes) = {
         let conn = database::connection();
         let mut stmt = conn
             .prepare("SELECT id, client_id, client_secret, redirect_uris, scopes FROM credentials LIMIT 1")
@@ -160,39 +160,41 @@ pub async fn login_with_google() -> Result<AuthResult, String> {
 }
 
 #[tauri::command]
-pub fn check_tokens() -> Result<String, String> {
-    let conn = database::connection();
-    let count: i64 = conn
-        .query_row("SELECT COUNT(*) FROM calendar_tokens", [], |row| row.get(0))
-        .map_err(|e| e.to_string())?;
+pub async fn check_calendar_token() -> Result<bool, String> {
+    use reqwest::Client;
 
-    if count == 0 {
-        return Ok("No tokens found in calendar_tokens table".to_string());
+    // Query the DB in a short scope so the MutexGuard is dropped before awaits
+    let (access_token, expiry_date, _refresh_token) = {
+        let conn = database::connection();
+        let mut stmt = conn
+            .prepare("SELECT access_token, expiry_date, refresh_token FROM calendar_tokens ORDER BY created_at DESC LIMIT 1")
+            .map_err(|e| e.to_string())?;
+        let token_row: Result<(String, String, String), _> =
+            stmt.query_row([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)));
+        match token_row {
+            Ok(data) => data,
+            Err(_) => return Ok(false), // no token saved
+        }
+    };
+    println!("Access token: {}", access_token);
+    println!("Expiry date: {}", expiry_date);
+    println!("Refresh token: {}", _refresh_token);
+    // Check expiry
+    let expiry = chrono::DateTime::parse_from_rfc3339(&expiry_date)
+        .map_err(|e| e.to_string())?;
+    if chrono::Utc::now() > expiry {
+        println!("expired");
+        return Ok(false); // expired
     }
 
-    let mut stmt = conn
-        .prepare(
-            "SELECT id, user_id, credential_id, access_token, scope, expiry_date, created_at 
-             FROM calendar_tokens ORDER BY created_at DESC LIMIT 5",
-        )
+    // Verify with Google API
+    let client = Client::new();
+    let resp = client
+        .get("https://www.googleapis.com/calendar/v3/users/me/calendarList")
+        .bearer_auth(&access_token)
+        .send()
+        .await
         .map_err(|e| e.to_string())?;
-
-    let tokens = stmt
-        .query_map([], |row| {
-            Ok(format!(
-                "ID: {}, User: {}, Credential: {}, Access: {}..., Scope: {}, Expires: {}, Created: {}",
-                row.get::<_, i64>(0)?,
-                row.get::<_, i64>(1)?,
-                row.get::<_, i64>(2)?,
-                row.get::<_, String>(3)?[..20.min(row.get::<_, String>(3)?.len())].to_string(),
-                row.get::<_, String>(4)?,
-                row.get::<_, String>(5)?,
-                row.get::<_, String>(6)?
-            ))
-        })
-        .map_err(|e| e.to_string())?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| e.to_string())?;
-
-    Ok(format!("Found {} tokens:\n{}", count, tokens.join("\n")))
+    println!("Response: {}", resp.status());
+    Ok(resp.status().is_success())
 }
