@@ -1,4 +1,4 @@
-use chrono::{DateTime, Duration, Timelike, Utc};
+use chrono::{DateTime, Duration, Timelike, Utc, Local};
 use reqwest::Client;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
@@ -154,14 +154,21 @@ async fn summarize_with_ollama(client: &Client, raw_text: &str) -> Result<String
     struct Payload<'a> {
         model: &'a str,
         prompt: String,
+        stream: bool,
+    }
+
+    #[derive(Deserialize)]
+    struct OllamaResponse {
+        response: String,
     }
 
     let payload = Payload {
         model: "mistral",
         prompt: format!(
-            "You are a productivity watcher. Summarize the following raw activity log into a short, clear description:\n\n{}",
+            "Summarize the activity into 3-5 concise bullet points.\n- Keep each bullet under 80 chars.\n- Focus on main apps and tasks.\n- No preamble or closing text.\n\nRaw log:\n{}",
             raw_text
         ),
+        stream: false,
     };
 
     let resp = client
@@ -171,17 +178,23 @@ async fn summarize_with_ollama(client: &Client, raw_text: &str) -> Result<String
         .await
         .map_err(|e| e.to_string())?;
 
-    let mut summary = String::new();
-    let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
-    let text = String::from_utf8_lossy(&bytes);
-
-    for line in text.lines() {
-        if let Some(part) = line.split("\"response\":\"").nth(1) {
-            summary.push_str(part.split('"').next().unwrap_or(""));
-        }
+    if !resp.status().is_success() {
+        return Err(format!("Ollama failed: {}", resp.status()));
     }
 
-    Ok(summary.trim().to_string())
+    let data: OllamaResponse = resp.json().await.map_err(|e| e.to_string())?;
+
+    // Unescape any literal \n into real newlines and trim
+    let mut summary = data.response.replace("\\n", "\n").trim().to_string();
+
+    // Ensure length is reasonable
+    let max_len = 600;
+    if summary.len() > max_len {
+        summary.truncate(max_len);
+        summary.push_str("\n…");
+    }
+
+    Ok(summary)
 }
 
 // === 5. Push event to Google Calendar ===
@@ -239,9 +252,21 @@ pub async fn update_hours() -> Result<(), String> {
         return Err("Token expired".into());
     }
 
-    let now = Utc::now();
-    let end = now.with_minute(0).unwrap().with_second(0).unwrap();
-    let start = end - Duration::hours(1);
+    // Work in local time to align with user's clock, then convert to UTC for APIs
+    let now_local = Local::now();
+
+    // End = top of current hour (e.g., 4:00 when it's 4:25 local)
+    let end_local = now_local
+        .with_minute(0).unwrap()
+        .with_second(0).unwrap()
+        .with_nanosecond(0).unwrap();
+
+    // Start = 1 hour before end
+    let start_local = end_local - Duration::hours(1);
+
+    // Convert to UTC for ActivityWatch and Google APIs
+    let start = start_local.with_timezone(&Utc);
+    let end = end_local.with_timezone(&Utc);
 
     println!("Processing {start} → {end} ...");
 
