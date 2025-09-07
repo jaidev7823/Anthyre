@@ -276,3 +276,51 @@ pub async fn update_hours() -> Result<(), String> {
 
     Ok(())
 }
+
+// === 7. Update for an explicit start/end range (from UI) ===
+#[derive(Deserialize)]
+pub struct RangeArgs {
+    #[serde(alias = "startISO", alias = "startIso", alias = "start_iso")]
+    pub start_iso: String,
+    #[serde(alias = "endISO", alias = "endIso", alias = "end_iso")]
+    pub end_iso: String,
+    #[serde(default)]
+    pub date: Option<String>,
+    #[serde(default)]
+    pub start: Option<String>,
+    #[serde(default)]
+    pub end: Option<String>,
+}
+
+#[tauri::command]
+pub async fn update_hours_range(args: RangeArgs) -> Result<(), String> {
+    let client = Client::new();
+    let token = get_latest_token()?;
+
+    if Utc::now() > token.expiry_date {
+        return Err("Token expired".into());
+    }
+
+    // Expect RFC3339/ISO strings; parse into UTC
+    let start = DateTime::parse_from_rfc3339(&args.start_iso)
+        .map_err(|e| format!("Invalid start time: {}", e))?
+        .with_timezone(&Utc);
+    let end = DateTime::parse_from_rfc3339(&args.end_iso)
+        .map_err(|e| format!("Invalid end time: {}", e))?
+        .with_timezone(&Utc);
+
+    if end <= start {
+        return Err("End time must be after start time".into());
+    }
+
+    println!("Processing {} → {} ...", start, end);
+
+    let events = get_aw_events(&client, start, end).await?;
+    let (event_title, raw_text) = summarize_events(&events);
+    let description = summarize_with_ollama(&client, &raw_text).await?;
+
+    add_calendar_event(&client, &token.access_token, &event_title, &description, start, end).await?;
+    println!("✅ Range {} → {} updated.", start, end);
+
+    Ok(())
+}

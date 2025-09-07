@@ -33,3 +33,24 @@ export async function updateHours() {
     return null;
   }
 }
+
+export async function updateHoursRange(
+  startISO: string,
+  endISO: string,
+  meta?: { date?: string; start?: string; end?: string }
+) {
+  try {
+    const result = await invoke("update_hours_range", {
+      args: {
+        startIso: startISO,
+        endIso: endISO,
+        ...(meta || {}),
+      },
+    });
+    console.log("Range updated successfully:", result);
+    return result;
+  } catch (err) {
+    console.error("Range update failed:", err);
+    return null;
+  }
+}

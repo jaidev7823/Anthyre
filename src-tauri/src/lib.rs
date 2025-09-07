@@ -28,6 +28,7 @@ pub fn run() {
             auth::login_with_google,
             auth::check_calendar_token,
             activity::update_hours,
+            activity::update_hours_range,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

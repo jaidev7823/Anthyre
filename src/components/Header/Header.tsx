@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, CalendarSync, ChevronDownIcon } from "lucide-react";
 import { useAuthStore } from "@/types/auth";
-import { init, syncCalendar, updateHours } from "@/lib/utils";
+import { init, syncCalendar, updateHoursRange } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Popover,
@@ -45,9 +44,41 @@ export default function Header({ currentPage }: { currentPage: string }) {
     checkLogin();
   }, [setLoggedIn]);
 
-  async function handleLogin() {
-    const isValid = await init();
-    setLoggedIn(isValid);
+  function to24Hour(hour12: number, period: "AM" | "PM"): number {
+    if (period === "AM") {
+      return hour12 === 12 ? 0 : hour12;
+    }
+    return hour12 === 12 ? 12 : hour12 + 12;
+  }
+
+  function handleConfirm() {
+    if (!selectedDate) {
+      console.warn("No date selected");
+      return;
+    }
+
+    const startDate = new Date(selectedDate);
+    const endDate = new Date(selectedDate);
+
+    startDate.setHours(to24Hour(startHour, startPeriod), 0, 0, 0);
+    endDate.setHours(to24Hour(endHour, endPeriod), 0, 0, 0);
+
+    const meta = {
+      date: selectedDate.toDateString(),
+      start: startDate.toLocaleTimeString(),
+      end: endDate.toLocaleTimeString(),
+    };
+
+    console.log("Sync parameters:", {
+      ...meta,
+      startISO: startDate.toISOString(),
+      endISO: endDate.toISOString(),
+    });
+
+    // Fire backend command to summarize and push event for the range
+    updateHoursRange(startDate.toISOString(), endDate.toISOString(), meta);
+
+    setOpen(false);
   }
 
   async function handleLogout() {
@@ -88,7 +119,7 @@ export default function Header({ currentPage }: { currentPage: string }) {
             <DialogTrigger asChild>
               <Button
                 className="flex items-center gap-2 min-w-[84px] h-10 px-4 bg-blue-500 text-white text-sm font-semibold hover:bg-blue-600"
-                onClick={updateHours}
+                onClick={() => {}}
               >
                 <CalendarSync className="h-4 w-4" />
                 <span className="truncate">Sync Calendar</span>
@@ -187,7 +218,7 @@ export default function Header({ currentPage }: { currentPage: string }) {
 
               </div>
 
-              <Button className="bg-blue-500 hover:bg-blue-600">
+              <Button className="bg-blue-500 hover:bg-blue-600" onClick={handleConfirm}>
                 Confirm Sync
               </Button>
             </DialogContent>
