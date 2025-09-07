@@ -61,7 +61,7 @@ export default function Header({ currentPage }: { currentPage: string }) {
         <div className="flex gap-2">
           <Button
             className="flex items-center gap-2 min-w-[84px] h-10 px-4 bg-blue-500 text-white text-sm font-semibold hover:bg-blue-600"
-            onClick={syncCalendar}
+            onClick={updateHours}
           >
             <CalendarSync className="h-4 w-4" />
             <span className="truncate">Sync Calendar</span>

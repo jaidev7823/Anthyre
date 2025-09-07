@@ -1,6 +1,7 @@
 mod auth;
 mod calendar;
 mod database;
+mod activity;
 
 use tauri::Manager;
 
@@ -26,6 +27,7 @@ pub fn run() {
             calendar::add_test_event,
             auth::login_with_google,
             auth::check_calendar_token,
+            activity::update_hours,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
