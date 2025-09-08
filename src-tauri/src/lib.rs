@@ -8,12 +8,9 @@ use tauri::Manager;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     dotenvy::dotenv().ok();
-    tokio::spawn(async {
-        crate::activity::run_hourly_updates().await;
-    });
 
     tauri::Builder::default()
-        .setup(|_app| {
+        .setup(|app| {
             if let Err(e) = database::init() {
                 eprintln!("❌ Database init failed: {}", e);
                 std::process::exit(1);
@@ -23,7 +20,27 @@ pub fn run() {
             if let Err(e) = database::seeder::seed_credentials(&conn) {
                 eprintln!("⚠️ Seeding credentials failed: {}", e);
             }
-            Ok(())
+
+            // ✅ spawn background task using Tauri's runtime
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                use tokio::time::{interval, Duration};
+                let mut ticker = interval(Duration::from_secs(60)); // 1 minute (testing)
+
+                loop {
+                    ticker.tick().await; // waits for next tick
+                    println!("🔄 Running scheduled update...");
+                    let res = crate::activity::update_hours().await;
+                    if let Err(e) = res {
+                        eprintln!("Background update error: {:?}", e);
+                    } else {
+                        println!("✅ Scheduled update completed successfully");
+                    }
+                }
+            });
+
+            // ✅ return correct type
+            Ok::<(), Box<dyn std::error::Error>>(())
         })
         .invoke_handler(tauri::generate_handler![
             calendar::test_calendar,

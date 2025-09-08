@@ -364,35 +364,33 @@ pub async fn update_hours_range(args: RangeArgs) -> Result<(), String> {
     Ok(())
 }
 
-pub async fn run_hourly_updates() {
-    loop {
-        let now = Local::now();
+// This function is no longer needed since we're using interval-based scheduling in lib.rs
+// Keeping it for potential future use
+pub async fn run_hourly_updates() -> Result<(), String> {
+    let now = Local::now();
 
-        // Round up to the *next* full minute
-        let next_minute =
-            now.with_second(0).unwrap().with_nanosecond(0).unwrap() + ChronoDuration::minutes(1);
+    // Round up to the *next* full minute
+    let next_minute =
+        now.with_second(0).unwrap().with_nanosecond(0).unwrap() + ChronoDuration::minutes(1);
 
-        // Sleep until then
-        let wait_duration = (next_minute - now).to_std().unwrap();
-        println!("⏳ Waiting until {next_minute}...");
+    // Sleep until then
+    let wait_duration = (next_minute - now).to_std().unwrap();
+    println!("⏳ Waiting until {next_minute}...");
 
-        sleep_until(Instant::now() + wait_duration).await;
+    sleep_until(Instant::now() + wait_duration).await;
 
-        // Range = last minute
-        let start_str = (next_minute - ChronoDuration::minutes(1)).to_rfc3339();
-        let end_str = next_minute.to_rfc3339();
+    // Range = last minute
+    let start_str = (next_minute - ChronoDuration::minutes(1)).to_rfc3339();
+    let end_str = next_minute.to_rfc3339();
 
-        let args = crate::activity::RangeArgs {
-            start_iso: start_str.clone(),
-            end_iso: end_str.clone(),
-            date: None,
-            start: None,
-            end: None,
-        };
+    let args = crate::activity::RangeArgs {
+        start_iso: start_str.clone(),
+        end_iso: end_str.clone(),
+        date: None,
+        start: None,
+        end: None,
+    };
 
-        println!("▶️ Running update for {start_str} → {end_str}");
-        if let Err(e) = crate::activity::update_hours_range(args).await {
-            eprintln!("❌ Failed: {e}");
-        }
-    }
+    println!("▶️ Running update for {start_str} → {end_str}");
+    crate::activity::update_hours_range(args).await
 }
