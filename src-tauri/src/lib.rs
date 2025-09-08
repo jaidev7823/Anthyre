@@ -25,7 +25,7 @@ pub fn run() {
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 use tokio::time::{interval, Duration};
-                let mut ticker = interval(Duration::from_secs(60)); // 1 minute (testing)
+                let mut ticker = interval(Duration::from_secs(3600)); // 1 minute (testing)
 
                 loop {
                     ticker.tick().await; // waits for next tick
