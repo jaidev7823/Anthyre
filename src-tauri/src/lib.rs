@@ -2,6 +2,7 @@ mod auth;
 mod calendar;
 mod database;
 mod activity;
+mod daily_report;
 
 use tauri::Manager;
 
@@ -25,7 +26,7 @@ pub fn run() {
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 use tokio::time::{interval, Duration};
-                let mut ticker = interval(Duration::from_secs(3600)); // 1 minute (testing)
+                let mut ticker = interval(Duration::from_secs(3600)); // 1hr
 
                 loop {
                     ticker.tick().await; // waits for next tick
@@ -49,6 +50,7 @@ pub fn run() {
             auth::check_calendar_token,
             activity::update_hours,
             activity::update_hours_range,
+            daily_report::get_daily_summary
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
