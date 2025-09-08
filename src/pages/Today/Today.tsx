@@ -1,9 +1,35 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertTriangle, XCircle, CheckCircle } from 'lucide-react';
-import { syncCalendar } from '@/lib/utils';
+import { syncCalendar,daily_summary } from '@/lib/utils';
+
 
 export default function Today() {
+  const [summary, setSummary] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  const fetchSummary = async () => {
+    setLoading(true);
+    try {
+      const result = await daily_summary(); // call backend daily summary command
+      setSummary(result as string); // explicitly cast to string
+    } catch (err: unknown) {
+      console.error('Failed to fetch summary:', err);
+      // Safely convert unknown error to string
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      setSummary(`Failed to load summary: ${errorMsg}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Run once when component mounts
+  useEffect(() => {
+    fetchSummary();
+  }, []);
   return (
     <div className="grid grid-cols-3 p-8 gap-8">
       {/* Main Body (Unchanged) */}
@@ -115,10 +141,7 @@ export default function Today() {
           </CardHeader>
           <CardContent className="pb-6">
             <p className="text-sm text-gray-400 leading-relaxed">
-              Today was a productive day, focusing on key tasks and meetings. You successfully
-              completed Project X and had effective communication with the team and clients. There was a
-              minor deviation with the client call running over and a period of distraction in the
-              afternoon. Overall, you maintained a good balance between planned and actual activities.
+              {loading ? 'Loading daily summary...' : summary}
             </p>
           </CardContent>
         </Card>

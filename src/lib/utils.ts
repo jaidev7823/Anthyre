@@ -22,6 +22,17 @@ export async function init(): Promise<boolean> {
   return await invoke<boolean>("check_calendar_token");
 }
 
+export async function daily_summary() {
+  try {
+    const result = await invoke("get_daily_summary");
+    console.log("daily summary:", result);
+    return result;
+  } catch (err) {
+    console.error("can't fetch daily summary:", err);
+    return null;
+  }
+}
+
 export async function updateHours() {
   try {
     // Here you might call another Rust command, for now just reuse login
@@ -54,3 +65,4 @@ export async function updateHoursRange(
     return null;
   }
 }
+

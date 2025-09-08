@@ -206,8 +206,9 @@ pub async fn check_calendar_token() -> Result<bool, String> {
     Ok(resp.status().is_success())
 }
 
+/// Get the latest saved calendar token from the database
 pub fn get_latest_token() -> Result<CalendarToken, String> {
-    let conn = crate::database::connection();
+    let conn = database::connection();
     let mut stmt = conn
         .prepare(
             "SELECT access_token, refresh_token, expiry_date 
