@@ -1,35 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { RefreshCw, AlertTriangle, XCircle, CheckCircle } from 'lucide-react';
-import { syncCalendar,daily_summary } from '@/lib/utils';
-
+import DailySummary  from '@/components/SummaryPanel/DailySummary';
+import Suggestions from '@/components/SummaryPanel/Suggestions';
+import RealityCheck  from '@/components/SummaryPanel/RealityCheck';
 
 export default function Today() {
-  const [summary, setSummary] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
 
-  const fetchSummary = async () => {
-    setLoading(true);
-    try {
-      const result = await daily_summary(); // call backend daily summary command
-      setSummary(result as string); // explicitly cast to string
-    } catch (err: unknown) {
-      console.error('Failed to fetch summary:', err);
-      // Safely convert unknown error to string
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      setSummary(`Failed to load summary: ${errorMsg}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Run once when component mounts
-  useEffect(() => {
-    fetchSummary();
-  }, []);
   return (
     <div className="grid grid-cols-3 p-8 gap-8">
       {/* Main Body (Unchanged) */}
@@ -125,81 +102,13 @@ export default function Today() {
       {/* Right Panel */}
       <div className="col-span-1 space-y-8">
         {/* Daily Summary */}
-        <Card className="bg-gray-800/50 border-gray-800">
-          <CardHeader className="flex flex-row justify-between items-center pt-6 space-y-0">
-            <h3 className="text-lg font-semibold text-white">Daily Summary</h3>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="p-1 text-gray-400 hover:text-white hover:bg-gray-700"
-              onClick={async () => {
-                await syncCalendar();
-              }}
-            >
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-          </CardHeader>
-          <CardContent className="pb-6">
-            <p className="text-sm text-gray-400 leading-relaxed">
-              {loading ? 'Loading daily summary...' : summary}
-            </p>
-          </CardContent>
-        </Card>
+        <DailySummary />
 
         {/* Reality Check */}
-        <Card className="bg-gray-800/50 border-gray-800">
-          <CardHeader className="pt-6">
-            <h3 className="text-lg font-semibold text-white">Reality Check</h3>
-          </CardHeader>
-          <CardContent className="pb-6">
-            <div className="flex gap-4 justify-between items-center mb-2">
-              <p className="text-sm font-medium text-gray-400">Reality Score</p>
-              <p className="text-lg font-bold text-white">85%</p>
-            </div>
-            <div className="w-full bg-gray-700 rounded-full h-2.5 mb-4">
-              <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: '85%' }}></div>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-yellow-400 mt-1" />
-                <div>
-                  <p className="font-medium text-white">Client Call ran 15 mins over</p>
-                  <p className="text-sm text-gray-400">Planned: 11:00 AM, Actual: 11:00 AM - 11:15 AM</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <XCircle className="h-5 w-5 text-red-500 mt-1" />
-                <div>
-                  <p className="font-medium text-white">Unplanned Social Media Break</p>
-                  <p className="text-sm text-gray-400">Between 2:00 PM - 3:00 PM</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <RealityCheck />
 
         {/* Suggestions for Tomorrow */}
-        <Card className="bg-gray-800/50 border-gray-800">
-          <CardHeader className="pt-6">
-            <h3 className="text-lg font-semibold text-white">Suggestions for Tomorrow</h3>
-          </CardHeader>
-          <CardContent className="pb-6">
-            <ul className="space-y-3">
-              <li className="flex items-start gap-3">
-                <CheckCircle className="h-5 w-5 text-green-500 mt-1" />
-                <p className="text-sm text-gray-300">Set hard stops for meetings to stay on schedule.</p>
-              </li>
-              <li className="flex items-start gap-3">
-                <CheckCircle className="h-5 w-5 text-green-500 mt-1" />
-                <p className="text-sm text-gray-300">Use a website blocker during focused work blocks.</p>
-              </li>
-              <li className="flex items-start gap-3">
-                <CheckCircle className="h-5 w-5 text-green-500 mt-1" />
-                <p className="text-sm text-gray-300">Schedule short, intentional breaks to avoid burnout.</p>
-              </li>
-            </ul>
-          </CardContent>
-        </Card>
+        <Suggestions />
       </div>
     </div>
   );

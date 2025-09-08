@@ -58,6 +58,7 @@ pub async fn update_hours() -> Result<(), String> {
 
     Ok(())
 }
+
 #[derive(Deserialize)]
 pub struct RangeArgs {
     pub start_iso: String,
