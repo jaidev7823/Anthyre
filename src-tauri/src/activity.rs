@@ -1,8 +1,8 @@
+use crate::database;
+use chrono::{DateTime, Duration, Duration as ChronoDuration, Local, Timelike, Utc};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use crate::database;
 use tokio::time::{sleep_until, Instant};
-use chrono::{DateTime, Duration, Timelike, Utc, Local, Duration as ChronoDuration};
 
 #[derive(Debug)]
 struct CalendarToken {
@@ -30,9 +30,9 @@ fn get_latest_token() -> Result<CalendarToken, String> {
         .prepare("SELECT access_token, refresh_token, expiry_date FROM calendar_tokens ORDER BY created_at DESC LIMIT 1")
         .map_err(|e| e.to_string())?;
 
-    let row: (String, String, String) =
-        stmt.query_row([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
-            .map_err(|_| "No token found".to_string())?;
+    let row: (String, String, String) = stmt
+        .query_row([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+        .map_err(|_| "No token found".to_string())?;
 
     let expiry = DateTime::parse_from_rfc3339(&row.2)
         .map_err(|e| e.to_string())?
@@ -46,7 +46,11 @@ fn get_latest_token() -> Result<CalendarToken, String> {
 }
 
 // === 2. Query ActivityWatch ===
-async fn get_aw_events(client: &Client, start: DateTime<Utc>, end: DateTime<Utc>) -> Result<Vec<AwEvent>, String> {
+async fn get_aw_events(
+    client: &Client,
+    start: DateTime<Utc>,
+    end: DateTime<Utc>,
+) -> Result<Vec<AwEvent>, String> {
     let url = "http://localhost:5600/api/0/buckets/aw-watcher-window_DESKTOP-9R9SJ3O/events";
     let resp = client
         .get(url)
@@ -70,11 +74,17 @@ fn summarize_events(events: &[AwEvent]) -> (String, String) {
     let mut app_titles: HashMap<String, Vec<(String, f64)>> = HashMap::new();
     let mut browser_tab_usage: HashMap<String, f64> = HashMap::new();
 
-    let browser_apps: HashSet<&str> = ["chrome.exe", "msedge.exe", "brave.exe", "firefox.exe"].into();
+    let browser_apps: HashSet<&str> =
+        ["chrome.exe", "msedge.exe", "brave.exe", "firefox.exe"].into();
 
     for ev in events {
         let duration = ev.duration;
-        let app = ev.data.app.clone().unwrap_or_else(|| "Unknown".to_string()).to_lowercase();
+        let app = ev
+            .data
+            .app
+            .clone()
+            .unwrap_or_else(|| "Unknown".to_string())
+            .to_lowercase();
         let title = ev.data.title.clone().unwrap_or_default();
 
         total_time += duration;
@@ -137,7 +147,12 @@ fn summarize_events(events: &[AwEvent]) -> (String, String) {
         let mut sorted_tabs: Vec<_> = browser_tab_usage.into_iter().collect();
         sorted_tabs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
         for (tab, d) in sorted_tabs.into_iter().take(10) {
-            raw_lines.push(format!("   • {} (~{:.1}m, {:.1}%)", tab, d / 60.0, (d / total_time) * 100.0));
+            raw_lines.push(format!(
+                "   • {} (~{:.1}m, {:.1}%)",
+                tab,
+                d / 60.0,
+                (d / total_time) * 100.0
+            ));
         }
     }
 
@@ -220,8 +235,12 @@ async fn add_calendar_event(
     let event = CalendarEvent {
         summary: summary.into(),
         description: description.into(),
-        start: EventDateTime { dateTime: start.to_rfc3339() },
-        end: EventDateTime { dateTime: end.to_rfc3339() },
+        start: EventDateTime {
+            dateTime: start.to_rfc3339(),
+        },
+        end: EventDateTime {
+            dateTime: end.to_rfc3339(),
+        },
     };
 
     let resp = client
@@ -255,9 +274,12 @@ pub async fn update_hours() -> Result<(), String> {
 
     // End = top of current hour (e.g., 4:00 when it's 4:25 local)
     let end_local = now_local
-        .with_minute(0).unwrap()
-        .with_second(0).unwrap()
-        .with_nanosecond(0).unwrap();
+        .with_minute(0)
+        .unwrap()
+        .with_second(0)
+        .unwrap()
+        .with_nanosecond(0)
+        .unwrap();
 
     // Start = 1 hour before end
     let start_local = end_local - Duration::hours(1);
@@ -272,7 +294,15 @@ pub async fn update_hours() -> Result<(), String> {
     let (event_title, raw_text) = summarize_events(&events);
     let description = summarize_with_ollama(&client, &raw_text).await?;
 
-    add_calendar_event(&client, &token.access_token, &event_title, &description, start, end).await?;
+    add_calendar_event(
+        &client,
+        &token.access_token,
+        &event_title,
+        &description,
+        start,
+        end,
+    )
+    .await?;
     println!("✅ Hour {start} → {end} updated.");
 
     Ok(())
@@ -320,7 +350,15 @@ pub async fn update_hours_range(args: RangeArgs) -> Result<(), String> {
     let (event_title, raw_text) = summarize_events(&events);
     let description = summarize_with_ollama(&client, &raw_text).await?;
 
-    add_calendar_event(&client, &token.access_token, &event_title, &description, start, end).await?;
+    add_calendar_event(
+        &client,
+        &token.access_token,
+        &event_title,
+        &description,
+        start,
+        end,
+    )
+    .await?;
     println!("✅ Range {} → {} updated.", start, end);
 
     Ok(())
@@ -330,34 +368,31 @@ pub async fn run_hourly_updates() {
     loop {
         let now = Local::now();
 
-        // Find the *next* top of the hour
-        let next_hour = now
-            .with_minute(0).unwrap()
-            .with_second(0).unwrap()
-            .with_nanosecond(0).unwrap()
-            + ChronoDuration::hours(1);
+        // Round up to the *next* full minute
+        let next_minute =
+            now.with_second(0).unwrap().with_nanosecond(0).unwrap() + ChronoDuration::minutes(1);
 
-        // Sleep until that time
-        let wait_duration = (next_hour - now).to_std().unwrap();
-        println!("⏳ Waiting until {next_hour}...");
+        // Sleep until then
+        let wait_duration = (next_minute - now).to_std().unwrap();
+        println!("⏳ Waiting until {next_minute}...");
 
         sleep_until(Instant::now() + wait_duration).await;
 
-        // Last hour range
-        let start = (next_hour - ChronoDuration::hours(1)).to_rfc3339();
-        let end = next_hour.to_rfc3339();
+        // Range = last minute
+        let start_str = (next_minute - ChronoDuration::minutes(1)).to_rfc3339();
+        let end_str = next_minute.to_rfc3339();
 
         let args = crate::activity::RangeArgs {
-            start_iso: start,
-            end_iso: end,
+            start_iso: start_str.clone(),
+            end_iso: end_str.clone(),
             date: None,
             start: None,
             end: None,
         };
 
-        // Call your existing command logic
+        println!("▶️ Running update for {start_str} → {end_str}");
         if let Err(e) = crate::activity::update_hours_range(args).await {
-            eprintln!("❌ Failed to update hour: {e}");
+            eprintln!("❌ Failed: {e}");
         }
     }
 }
