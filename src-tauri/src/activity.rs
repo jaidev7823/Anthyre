@@ -1,7 +1,8 @@
-use chrono::{DateTime, Duration, Timelike, Utc, Local};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use crate::database;
+use tokio::time::{sleep_until, Instant};
+use chrono::{DateTime, Duration, Timelike, Utc, Local, Duration as ChronoDuration};
 
 #[derive(Debug)]
 struct CalendarToken {
@@ -323,4 +324,40 @@ pub async fn update_hours_range(args: RangeArgs) -> Result<(), String> {
     println!("✅ Range {} → {} updated.", start, end);
 
     Ok(())
+}
+
+pub async fn run_hourly_updates() {
+    loop {
+        let now = Local::now();
+
+        // Find the *next* top of the hour
+        let next_hour = now
+            .with_minute(0).unwrap()
+            .with_second(0).unwrap()
+            .with_nanosecond(0).unwrap()
+            + ChronoDuration::hours(1);
+
+        // Sleep until that time
+        let wait_duration = (next_hour - now).to_std().unwrap();
+        println!("⏳ Waiting until {next_hour}...");
+
+        sleep_until(Instant::now() + wait_duration).await;
+
+        // Last hour range
+        let start = (next_hour - ChronoDuration::hours(1)).to_rfc3339();
+        let end = next_hour.to_rfc3339();
+
+        let args = crate::activity::RangeArgs {
+            start_iso: start,
+            end_iso: end,
+            date: None,
+            start: None,
+            end: None,
+        };
+
+        // Call your existing command logic
+        if let Err(e) = crate::activity::update_hours_range(args).await {
+            eprintln!("❌ Failed to update hour: {e}");
+        }
+    }
 }

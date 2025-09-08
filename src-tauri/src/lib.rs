@@ -8,6 +8,9 @@ use tauri::Manager;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     dotenvy::dotenv().ok();
+    tokio::spawn(async {
+        crate::activity::run_hourly_updates().await;
+    });
 
     tauri::Builder::default()
         .setup(|_app| {
