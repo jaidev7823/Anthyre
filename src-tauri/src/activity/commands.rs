@@ -60,6 +60,7 @@ pub async fn update_hours() -> Result<(), String> {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RangeArgs {
     pub start_iso: String,
     pub end_iso: String,
@@ -92,21 +93,41 @@ pub async fn update_hours_range(args: RangeArgs) -> Result<(), String> {
         return Err("End time must be after start time".into());
     }
 
-    println!("Processing {} → {} ...", start, end);
+    println!("Processing range {} → {} ...", start, end);
 
-    let events = get_aw_events(&client, start, end).await?;
-    let (event_title, raw_text) = summarize_events(&events);
-    let description = summarize_with_ollama(&client, &raw_text).await?;
+    let mut current_start = start;
+    while current_start < end {
+        let current_end = (current_start + ChronoDuration::hours(1)).min(end);
 
-    add_calendar_event(
-        &client,
-        &token.access_token,
-        &event_title,
-        &description,
-        start,
-        end,
-    )
-    .await?;
+        println!("Processing block {} → {} ...", current_start, current_end);
+
+        let events = get_aw_events(&client, current_start, current_end).await?;
+        
+        let (event_title, raw_text) = if events.is_empty() {
+            ("No Activity".to_string(), "".to_string())
+        } else {
+            summarize_events(&events)
+        };
+
+        let description = if raw_text.is_empty() {
+            "No activity recorded for this period.".to_string()
+        } else {
+            summarize_with_ollama(&client, &raw_text).await?
+        };
+
+        add_calendar_event(
+            &client,
+            &token.access_token,
+            &event_title,
+            &description,
+            current_start,
+            current_end,
+        )
+        .await?;
+        
+        current_start = current_end;
+    }
+
     println!("✅ Range {} → {} updated.", start, end);
 
     Ok(())

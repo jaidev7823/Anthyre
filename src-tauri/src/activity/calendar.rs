@@ -43,7 +43,7 @@ pub async fn add_calendar_event(
         .map_err(|e| e.to_string())?;
 
     if resp.status().is_success() {
-        println!("✅ Event created");
+        println!("✅ Event created: {} -> {}", start, end);
         Ok(())
     } else {
         Err(format!("Failed: {}", resp.status()))

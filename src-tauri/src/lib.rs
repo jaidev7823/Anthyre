@@ -1,5 +1,4 @@
 mod auth;
-mod calendar;
 mod database;
 mod activity;
 mod daily_report;
@@ -44,8 +43,6 @@ pub fn run() {
             Ok::<(), Box<dyn std::error::Error>>(())
         })
         .invoke_handler(tauri::generate_handler![
-            calendar::test_calendar,
-            calendar::add_test_event,
             auth::login_with_google,
             auth::check_calendar_token,
             activity::update_hours,

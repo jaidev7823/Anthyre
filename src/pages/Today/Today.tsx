@@ -17,65 +17,7 @@ export default function Today() {
             <h3 className="font-semibold text-white">8:00 AM - 9:00 AM</h3>
           </CardHeader>
           <CardContent className="p-4 grid grid-cols-2 gap-4">
-            <div>
-              <h4 className="font-medium text-gray-400 mb-2">Planned</h4>
-              <p className="p-3 bg-gray-800 rounded-md text-white">Morning Routine</p>
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-400 mb-2">Actual</h4>
-              <p className="p-3 bg-gray-800 rounded-md text-white">Morning Routine</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Time Block: 9:00 AM - 12:00 PM */}
-        <Card className="border-gray-800 bg-slate-900">
-          <CardHeader className="px-4 py-3 bg-gray-800/50 flex justify-between items-center">
-            <h3 className="font-semibold text-white">9:00 AM - 12:00 PM</h3>
-          </CardHeader>
-          <CardContent className="p-4 grid grid-cols-2 gap-4">
-            <div>
-              <h4 className="font-medium text-gray-400 mb-2">Planned</h4>
-              <div className="space-y-2">
-                <p className="p-3 bg-gray-800 rounded-md text-white">Work on Project X</p>
-                <p className="p-3 bg-gray-800 rounded-md text-white">Meeting with Team</p>
-                <p className="p-3 bg-gray-800 rounded-md text-white">Client Call</p>
-              </div>
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-400 mb-2">Actual</h4>
-              <div className="space-y-2">
-                <p className="p-3 bg-gray-800 rounded-md text-white">Work on Project X</p>
-                <p className="p-3 bg-gray-800 rounded-md text-white">Meeting with Team</p>
-                <p className="p-3 bg-gray-800 rounded-md text-white">Client Call - Ran 15 mins over</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Time Block: 12:00 PM - 1:00 PM */}
-        <Card className="border-gray-800 bg-slate-900">
-          <CardHeader className="px-4 py-3 bg-gray-800/50 flex justify-between items-center">
-            <h3 className="font-semibold text-white">12:00 PM - 1:00 PM</h3>
-          </CardHeader>
-          <CardContent className="p-4 grid grid-cols-2 gap-4">
-            <div>
-              <h4 className="font-medium text-gray-400 mb-2">Planned</h4>
-              <p className="p-3 bg-gray-800 rounded-md text-white">Lunch Break</p>
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-400 mb-2">Actual</h4>
-              <p className="p-3 bg-gray-800 rounded-md text-white">Lunch Break</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Time Block: 1:00 PM - 5:00 PM */}
-        <Card className="border-gray-800 bg-slate-900">
-          <CardHeader className="px-4 py-3 bg-gray-800/50 flex justify-between items-center">
-            <h3 className="font-semibold text-white">1:00 PM - 5:00 PM</h3>
-          </CardHeader>
-          <CardContent className="p-4 grid grid-cols-2 gap-4">
+            
             <div>
               <h4 className="font-medium text-gray-400 mb-2">Planned</h4>
               <div className="space-y-2">
@@ -97,6 +39,7 @@ export default function Today() {
             </div>
           </CardContent>
         </Card>
+
       </div>
 
       {/* Right Panel */}
