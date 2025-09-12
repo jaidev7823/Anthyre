@@ -16,7 +16,7 @@ fn today_range_utc() -> (DateTime<Utc>, DateTime<Utc>) {
 
 
 /// Fetch events from Google Calendar for today
-async fn get_calendar_events(client: &Client, token: &str, start: DateTime<Utc>, end: DateTime<Utc>) -> Result<Vec<Value>, String> {
+pub async fn get_calendar_events(client: &Client, token: &str, start: DateTime<Utc>, end: DateTime<Utc>) -> Result<Vec<Value>, String> {
     let url = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
 
     let resp = client
@@ -41,6 +41,7 @@ async fn get_calendar_events(client: &Client, token: &str, start: DateTime<Utc>,
     let data: Value = resp.json().await.map_err(|e| e.to_string())?;
     Ok(data["items"].as_array().cloned().unwrap_or_default())
 }
+
 /// Collect event summaries + descriptions into one log string
 fn collect_descriptions(events: &[Value]) -> String {
     let mut logs = Vec::new();

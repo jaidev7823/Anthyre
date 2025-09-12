@@ -2,6 +2,7 @@ mod auth;
 mod database;
 mod activity;
 mod daily_report;
+use crate::activity::processor::make_batches;
 
 use tauri::Manager;
 
@@ -47,7 +48,8 @@ pub fn run() {
             auth::check_calendar_token,
             activity::update_hours,
             activity::update_hours_range,
-            daily_report::get_daily_summary
+            daily_report::get_daily_summary,
+            activity::processor::fetch_batches,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
