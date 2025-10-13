@@ -53,7 +53,6 @@ pub async fn fetch_batches() -> Result<Vec<Batch>, String> {
 
     // 4) Fetch events
     let events = get_calendar_events(&client, &token, start_of_day, end_of_day).await?;
-    println!("{}", events);
     // 5) Make batches
     Ok(make_batches(hours, events))
 }

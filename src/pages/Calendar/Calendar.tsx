@@ -1,100 +1,201 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { X, CheckCircle } from 'lucide-react';
+import { X, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function Calendar() {
-  const [selectedDate, setSelectedDate] = useState('Oct 2');
+  const today = useMemo(() => new Date(), []);
+  const [visibleMonth, setVisibleMonth] = useState<Date>(
+    new Date(today.getFullYear(), today.getMonth(), 1)
+  );
+  const [selectedDate, setSelectedDate] = useState<Date | null>(today);
 
-  const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-  const dates = [
-    { day: 29, prevMonth: true },
-    { day: 30, prevMonth: true },
-    { day: 1, progress: 70, color: '#4ade80' },
-    { day: 2, progress: 90, color: '#4ade80', selected: true },
-    { day: 3, progress: 50, color: '#facc15' },
-    { day: 4, progress: 20, color: '#f87171' },
-    { day: 5 },
-    { day: 6 },
-    { day: 7 },
-    { day: 8 },
-    { day: 9 },
-    { day: 10 },
-    { day: 11 },
-    { day: 12 },
-    { day: 13 },
-    { day: 14 },
-    { day: 15 },
-    { day: 16 },
-    { day: 17 },
-    { day: 18 },
-    { day: 19 },
-    { day: 20 },
-    { day: 21 },
-    { day: 22 },
-    { day: 23 },
-    { day: 24 },
-    { day: 25 },
-    { day: 26 },
-    { day: 27 },
-    { day: 28 },
-    { day: 29 },
-    { day: 30 },
-    { day: 31 },
-    { day: 1, nextMonth: true },
-    { day: 2, nextMonth: true },
-  ];
+  const dayLabels = useMemo(() => {
+    const base = new Date(2021, 7, 1); // Sunday
+    return [...Array(7)].map((_, i) =>
+      new Date(base.getFullYear(), base.getMonth(), base.getDate() + i)
+        .toLocaleDateString(undefined, { weekday: 'short' })
+        .toUpperCase()
+    );
+  }, []);
+
+  function startOfMonth(d: Date) {
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  }
+
+  function endOfMonth(d: Date) {
+    return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  }
+
+  const monthGrid = useMemo(() => {
+    const start = startOfMonth(visibleMonth);
+    const end = endOfMonth(visibleMonth);
+    const startWeekday = start.getDay();
+
+    const daysInPrevMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), 0).getDate();
+    const daysInThisMonth = end.getDate();
+
+    const cells: Array<{ date: Date; inMonth: boolean }> = [];
+
+    // Leading days from previous month
+    for (let i = startWeekday - 1; i >= 0; i--) {
+      const day = daysInPrevMonth - i;
+      cells.push({
+        date: new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, day),
+        inMonth: false,
+      });
+    }
+
+    // Current month days
+    for (let d = 1; d <= daysInThisMonth; d++) {
+      cells.push({
+        date: new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), d),
+        inMonth: true,
+      });
+    }
+
+    // Trailing days from next month to complete 6 rows (42 cells)
+    const remaining = 42 - cells.length;
+    for (let d = 1; d <= remaining; d++) {
+      cells.push({
+        date: new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, d),
+        inMonth: false,
+      });
+    }
+
+    return cells;
+  }, [visibleMonth]);
+
+  function isSameDay(a: Date | null, b: Date) {
+    if (!a) return false;
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  }
+
+  function colorForProgress(pct: number): string {
+    if (pct >= 80) return 'bg-emerald-500';
+    if (pct >= 50) return 'bg-amber-400';
+    return 'bg-rose-500';
+  }
+
+  // Placeholder progress: you can wire real data here later
+  function getProgressForDate(_date: Date): number | null {
+    return null;
+  }
+
+  const title = useMemo(
+    () => visibleMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+    [visibleMonth]
+  );
 
   return (
     <div className="flex-1 flex flex-col">
       <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 p-6 overflow-y-auto">
-          <Card className="border-gray-800 rounded-2xl overflow-hidden">
-            <CardContent className="p-0 grid grid-cols-7 gap-px bg-gray-800">
-              {days.map((day) => (
-                <div
-                  key={day}
-                  className="text-center py-3 bg-slate-900 text-sm font-medium text-gray-400 border border-gray-800"
-                >
-                  {day}
-                </div>
-              ))}
-              {dates.map((date, index) => (
-                <div
-                  key={index}
-                  className={`h-36 p-2 bg-slate-900 border border-gray-800 flex flex-col justify-between ${
-                    date.prevMonth || date.nextMonth
-                      ? 'text-gray-600'
-                      : 'hover:bg-gray-800 cursor-pointer transition-colors'
-                  } ${date.selected ? 'border-2 border-blue-500 -m-px rounded-lg' : ''}`}
-                  onClick={() => !date.prevMonth && !date.nextMonth && setSelectedDate(`Oct ${date.day}`)}
-                >
-                  <span
-                    className={`font-medium ${date.selected ? 'text-blue-500 font-bold' : ''}`}
+        <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-gray-300 hover:bg-gray-800"
+                onClick={() =>
+                  setVisibleMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))
+                }
+                aria-label="Previous month"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-gray-300 hover:bg-gray-800"
+                onClick={() => setVisibleMonth(new Date(today.getFullYear(), today.getMonth(), 1))}
+                aria-label="Today"
+              >
+                <span className="text-sm">Today</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-gray-300 hover:bg-gray-800"
+                onClick={() =>
+                  setVisibleMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))
+                }
+                aria-label="Next month"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </Button>
+            </div>
+            <h2 className="text-lg sm:text-xl font-semibold text-white">{title}</h2>
+            <div className="w-24" />
+          </div>
+
+          <Card className="border-gray-800 rounded-2xl">
+            <CardContent className="p-0">
+              <div className="grid grid-cols-7 gap-px bg-gray-800">
+                {dayLabels.map((label) => (
+                  <div
+                    key={label}
+                    className="text-center py-2 sm:py-3 bg-slate-900 text-xs sm:text-sm font-medium text-gray-400 border border-gray-800"
                   >
-                    {date.day}
-                  </span>
-                  {date.progress && (
-                    <div className="self-end">
-                      <div
-                        className="progress-circle"
-                        style={{ '--progress': date.progress, '--color': date.color } as any}
-                      ></div>
+                    {label}
+                  </div>
+                ))}
+
+                {monthGrid.map((cell, index) => {``
+                  const dayNum = cell.date.getDate();
+                  const inMonth = cell.inMonth;
+                  const selected = isSameDay(selectedDate, cell.date);
+                  const progress = getProgressForDate(cell.date);
+
+                  return (
+                    <div
+                      key={`${cell.date.toISOString()}-${index}`}
+                      className={`h-24 sm:h-32 p-2 bg-slate-900 border border-gray-800 flex flex-col gap-2 ${
+                        inMonth
+                          ? 'hover:bg-gray-800 cursor-pointer transition-colors'
+                          : 'text-gray-600'
+                      } ${selected ? 'relative z-10 ring-2 ring-blue-500 -m-px rounded-lg' : ''}`}
+                      onClick={() => inMonth && setSelectedDate(cell.date)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className={`text-sm font-medium ${
+                          selected ? 'text-blue-400 font-semibold' : inMonth ? 'text-white' : 'text-gray-500'
+                        }`}>
+                          {dayNum}
+                        </span>
+                        {isSameDay(today, cell.date) && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300">Today</span>
+                        )}
+                      </div>
+
+                      {typeof progress === 'number' && (
+                        <div className="mt-auto">
+                          <div className="w-full h-1.5 rounded-full bg-gray-700 overflow-hidden">
+                            <div
+                              className={`h-full ${colorForProgress(progress)}`}
+                              style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+                            />
+                          </div>
+                          <div className="mt-1 text-[10px] text-gray-400 text-right">{progress}%</div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              ))}
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
         </div>
-        <aside className="w-96 flex-shrink-0 bg-slate-900 border border-gray-800 p-6 flex flex-col gap-6 overflow-y-auto">
+        <aside className="hidden md:flex w-96 flex-shrink-0 bg-slate-900 border border-gray-800 p-6 flex-col gap-6 overflow-y-auto">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-white">Day Detail - {selectedDate}</h2>
+            <h2 className="text-xl font-semibold text-white">
+              Day Detail {selectedDate ? `- ${selectedDate.toLocaleDateString()}` : ''}
+            </h2>
             <Button
               variant="ghost"
               size="icon"
               className="p-2 text-gray-400 hover:bg-gray-800"
-              onClick={() => setSelectedDate('')}
+              onClick={() => setSelectedDate(null)}
             >
               <X className="h-5 w-5" />
             </Button>
