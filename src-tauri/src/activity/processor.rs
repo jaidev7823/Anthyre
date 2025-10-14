@@ -1,7 +1,7 @@
-use chrono::{DateTime, Utc, Timelike, Duration};
-use serde::{Serialize, Deserialize};
-use serde_json::Value;
+use chrono::{DateTime, Duration, Timelike, Utc};
 use reqwest::Client;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 // Assuming this struct exists in your codebase
 use crate::auth::get_latest_token;
@@ -21,6 +21,7 @@ pub struct Batch {
     pub end_hour: u8,
     pub label: String,
     pub is_event: bool,
+    pub events: Vec<Value>, // Add this field
 }
 
 #[tauri::command]
@@ -47,8 +48,19 @@ pub async fn fetch_batches() -> Result<Vec<Batch>, String> {
         .collect::<Vec<HourBlock>>();
 
     // 3) Today range
-    let now = Utc::now();
-    let start_of_day = now.date_naive().and_hms_opt(0, 0, 0).unwrap().and_utc();
+    let local_now = chrono::Local::now();
+
+    println!("Current UTC time: {}", local_now);
+    println!(
+        "Current local time: {}",
+        local_now.with_timezone(&chrono::Local)
+    );
+    let start_of_day = local_now
+        .date_naive()
+        .and_hms_opt(0, 0, 0)
+        .unwrap()
+        .and_utc();
+    println!("Start of day UTC: {}", start_of_day);
     let end_of_day = start_of_day + Duration::hours(24);
 
     // 4) Fetch events
@@ -60,7 +72,7 @@ pub async fn fetch_batches() -> Result<Vec<Batch>, String> {
 /// Existing batching function
 pub fn make_batches(hours: Vec<HourBlock>, events: Vec<Value>) -> Vec<Batch> {
     let mut event_hours: Vec<u8> = Vec::new();
-    for ev in events {
+    for ev in &events {
         if let Some(start) = ev["start"]["dateTime"].as_str() {
             if let Ok(dt) = DateTime::parse_from_rfc3339(start) {
                 event_hours.push(dt.hour() as u8);
@@ -87,6 +99,19 @@ pub fn make_batches(hours: Vec<HourBlock>, events: Vec<Value>) -> Vec<Batch> {
                         format!("Free: {} - {}", start, end)
                     },
                     is_event: current_is_event,
+                    events: events
+                        .iter()
+                        .filter(|ev| {
+                            if let Some(start_str) = ev["start"]["dateTime"].as_str() {
+                                if let Ok(dt) = DateTime::parse_from_rfc3339(start_str) {
+                                    // use outer start/end, not start_str
+                                    return dt.hour() as u8 >= start && dt.hour() as u8 <= end;
+                                }
+                            }
+                            false
+                        })
+                        .cloned()
+                        .collect(),
                 });
                 current_start = Some(h.hour_24);
                 current_end = Some(h.hour_24);
@@ -111,9 +136,21 @@ pub fn make_batches(hours: Vec<HourBlock>, events: Vec<Value>) -> Vec<Batch> {
                 format!("Free: {} - {}", start, end)
             },
             is_event: current_is_event,
+            events: events
+                .iter()
+                .filter(|ev| {
+                    if let Some(start_str) = ev["start"]["dateTime"].as_str() {
+                        if let Ok(dt) = DateTime::parse_from_rfc3339(start_str) {
+                            // use outer start/end, not start_str
+                            return dt.hour() as u8 >= start && dt.hour() as u8 <= end;
+                        }
+                    }
+                    false
+                })
+                .cloned()
+                .collect(),
         });
     }
 
     batches
 }
-
