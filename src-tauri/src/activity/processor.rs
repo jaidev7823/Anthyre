@@ -70,87 +70,148 @@ pub async fn fetch_batches() -> Result<Vec<Batch>, String> {
 }
 
 /// Existing batching function
+/// Modified batching function:
+/// - Events: each hour is its own batch (1-hour blocks)
+/// Modified batching function:
+/// - Events: each hour is its own batch (1-hour blocks)
+/// - Multi-hour events appear in EACH hour they span
+/// - Free time: batch all consecutive free hours together
 pub fn make_batches(hours: Vec<HourBlock>, events: Vec<Value>) -> Vec<Batch> {
-    let mut event_hours: Vec<u8> = Vec::new();
+    // Map each hour to all events that occur during that hour
+    let mut hours_with_events: std::collections::HashMap<u8, Vec<Value>> = std::collections::HashMap::new();
+    
     for ev in &events {
-        if let Some(start) = ev["start"]["dateTime"].as_str() {
-            if let Ok(dt) = DateTime::parse_from_rfc3339(start) {
-                event_hours.push(dt.hour() as u8);
+        if let Some(start_str) = ev["start"]["dateTime"].as_str() {
+            if let Some(end_str) = ev["end"]["dateTime"].as_str() {
+                if let (Ok(start_dt), Ok(end_dt)) = (
+                    DateTime::parse_from_rfc3339(start_str),
+                    DateTime::parse_from_rfc3339(end_str)
+                ) {
+                    let start_hour = start_dt.hour() as u8;
+                    let end_hour = end_dt.hour() as u8;
+                    let end_minute = end_dt.minute();
+                    
+                    // If event ends exactly on the hour (minute=0), don't include that hour
+                    let actual_end_hour = if end_minute == 0 && end_hour > start_hour {
+                        end_hour - 1
+                    } else {
+                        end_hour
+                    };
+                    
+                    for hour in start_hour..=actual_end_hour {
+                        hours_with_events
+                            .entry(hour)
+                            .or_insert_with(Vec::new)
+                            .push(ev.clone());
+                    }
+                }
             }
         }
     }
 
     let mut batches = Vec::new();
-    let mut current_start: Option<u8> = None;
-    let mut current_end: Option<u8> = None;
-    let mut current_is_event = false;
+    let mut free_batch_start: Option<u8> = None;
+    let mut event_batch_start: Option<u8> = None;
+    let mut current_events: Vec<Value> = vec![];
 
     for h in &hours {
-        let has_event = event_hours.contains(&h.hour_24);
+        let hour_events = hours_with_events.get(&h.hour_24).cloned().unwrap_or_default();
+        let has_event = !hour_events.is_empty();
 
-        if let (Some(start), Some(end)) = (current_start, current_end) {
-            if has_event != current_is_event {
+        if has_event {
+            // Close any open free batch
+            if let Some(start) = free_batch_start {
+                let prev_hour = if h.hour_24 > 0 { h.hour_24 - 1 } else { 0 };
                 batches.push(Batch {
                     start_hour: start,
-                    end_hour: end,
-                    label: if current_is_event {
-                        format!("Event: {} - {}", start, end)
-                    } else {
-                        format!("Free: {} - {}", start, end)
-                    },
-                    is_event: current_is_event,
-                    events: events
-                        .iter()
-                        .filter(|ev| {
-                            if let Some(start_str) = ev["start"]["dateTime"].as_str() {
-                                if let Ok(dt) = DateTime::parse_from_rfc3339(start_str) {
-                                    // use outer start/end, not start_str
-                                    return dt.hour() as u8 >= start && dt.hour() as u8 <= end;
-                                }
-                            }
-                            false
-                        })
-                        .cloned()
-                        .collect(),
+                    end_hour: prev_hour,
+                    label: format!("Free: {} - {}", start, prev_hour),
+                    is_event: false,
+                    events: vec![],
                 });
-                current_start = Some(h.hour_24);
-                current_end = Some(h.hour_24);
-                current_is_event = has_event;
+                free_batch_start = None;
+            }
+
+            // Check if we can continue batching (same single event)
+            let can_batch = hour_events.len() == 1 
+                && current_events.len() == 1 
+                && events_are_same(&hour_events[0], &current_events[0]);
+
+            if can_batch {
+                // Continue batching the same single event
+                // (event_batch_start stays the same)
             } else {
-                current_end = Some(h.hour_24);
+                // Close previous event batch if exists
+                if let Some(start) = event_batch_start {
+                    let prev_hour = if h.hour_24 > 0 { h.hour_24 - 1 } else { 0 };
+                    batches.push(Batch {
+                        start_hour: start,
+                        end_hour: prev_hour,
+                        label: format!("Event: {} - {}", start, prev_hour),
+                        is_event: true,
+                        events: current_events.clone(),
+                    });
+                }
+                
+                // Start new event batch
+                event_batch_start = Some(h.hour_24);
+                current_events = hour_events;
             }
         } else {
-            current_start = Some(h.hour_24);
-            current_end = Some(h.hour_24);
-            current_is_event = has_event;
+            // Close any open event batch
+            if let Some(start) = event_batch_start {
+                let prev_hour = if h.hour_24 > 0 { h.hour_24 - 1 } else { 0 };
+                batches.push(Batch {
+                    start_hour: start,
+                    end_hour: prev_hour,
+                    label: format!("Event: {} - {}", start, prev_hour),
+                    is_event: true,
+                    events: current_events.clone(),
+                });
+                event_batch_start = None;
+                current_events = vec![];
+            }
+
+            // Start or continue free time batch
+            if free_batch_start.is_none() {
+                free_batch_start = Some(h.hour_24);
+            }
         }
     }
 
-    if let (Some(start), Some(end)) = (current_start, current_end) {
+    // Close any remaining event batch
+    if let Some(start) = event_batch_start {
         batches.push(Batch {
             start_hour: start,
-            end_hour: end,
-            label: if current_is_event {
-                format!("Event: {} - {}", start, end)
-            } else {
-                format!("Free: {} - {}", start, end)
-            },
-            is_event: current_is_event,
-            events: events
-                .iter()
-                .filter(|ev| {
-                    if let Some(start_str) = ev["start"]["dateTime"].as_str() {
-                        if let Ok(dt) = DateTime::parse_from_rfc3339(start_str) {
-                            // use outer start/end, not start_str
-                            return dt.hour() as u8 >= start && dt.hour() as u8 <= end;
-                        }
-                    }
-                    false
-                })
-                .cloned()
-                .collect(),
+            end_hour: 23,
+            label: format!("Event: {} - 23", start),
+            is_event: true,
+            events: current_events,
+        });
+    }
+
+    // Close any remaining free batch
+    if let Some(start) = free_batch_start {
+        batches.push(Batch {
+            start_hour: start,
+            end_hour: 23,
+            label: format!("Free: {} - 23", start),
+            is_event: false,
+            events: vec![],
         });
     }
 
     batches
+}
+
+/// Helper function to check if two events are the same
+fn events_are_same(ev1: &Value, ev2: &Value) -> bool {
+    // Compare by ID if available, otherwise by summary and time
+    if let (Some(id1), Some(id2)) = (ev1.get("id"), ev2.get("id")) {
+        return id1 == id2;
+    }
+    
+    ev1.get("summary") == ev2.get("summary") 
+        && ev1.get("start") == ev2.get("start")
+        && ev1.get("end") == ev2.get("end")
 }
