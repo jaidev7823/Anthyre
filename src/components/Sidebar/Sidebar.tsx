@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Calendar, ChartBar, Settings } from "lucide-react";
+import { Calendar, ChartBar, Settings, Bot  } from "lucide-react";
 
 export default function Sidebar() {
   return (
@@ -39,6 +39,17 @@ export default function Sidebar() {
           >
             <ChartBar className="h-5 w-5" />
             <span>Reports</span>
+          </NavLink>
+          <NavLink
+            to="/chat"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2 rounded-md text-white ${
+                isActive ? "bg-gray-800" : "text-gray-400 hover:bg-gray-800"
+              }`
+            }
+          >
+            <Bot className="h-5 w-5" />
+            <span>Chat</span>
           </NavLink>
         </nav>
       </div>
