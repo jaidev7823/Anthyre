@@ -2,6 +2,7 @@ mod auth;
 mod database;
 mod activity;
 mod daily_report;
+mod llm;
 use crate::activity::processor::make_batches;
 
 use tauri::Manager;
@@ -50,6 +51,7 @@ pub fn run() {
             activity::update_hours_range,
             daily_report::get_daily_summary,
             activity::processor::fetch_batches,
+            llm::ask_mistral,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

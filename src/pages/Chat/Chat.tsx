@@ -2,6 +2,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect, useRef } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 
 interface Message {
   id: number;
@@ -24,7 +27,26 @@ const Chat = () => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = () => {
+  useEffect(() => {
+    const unlisten = listen<string>("llm-token", (event) => {
+      setMessages((prevMessages) => {
+        const lastMessage = prevMessages[prevMessages.length - 1];
+        if (lastMessage && lastMessage.sender === "bot") {
+          return [
+            ...prevMessages.slice(0, -1),
+            { ...lastMessage, text: lastMessage.text + event.payload },
+          ];
+        }
+        return prevMessages;
+      });
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
+
+  const handleSendMessage = async () => {
     if (inputValue.trim() === "") return;
 
     const userMessage: Message = {
@@ -32,30 +54,19 @@ const Chat = () => {
       text: inputValue,
       sender: "user",
     };
-    setMessages((prevMessages) => [...prevMessages, userMessage]);
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
+    const prompt = inputValue;
     setInputValue("");
 
-    // Simulate bot response with animation
-    const botResponseText = "I am working";
-    const botResponse: Message = {
-      id: messages.length + 2,
-      text: "",
-      sender: "bot",
+    const botMessage: Message = {
+        id: newMessages.length + 1,
+        text: "",
+        sender: "bot",
     };
-    setMessages((prevMessages) => [...prevMessages, botResponse]);
+    setMessages((prevMessages) => [...prevMessages, botMessage]);
 
-    const words = botResponseText.split(" ");
-    let currentText = "";
-    words.forEach((word, index) => {
-      setTimeout(() => {
-        currentText += (index > 0 ? " " : "") + word;
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg.id === botResponse.id ? { ...msg, text: currentText } : msg
-          )
-        );
-      }, (index + 1) * 300);
-    });
+    await invoke("ask_mistral", { prompt });
   };
 
   return (
@@ -73,7 +84,10 @@ const Chat = () => {
               }`}
             >
               {message.sender === "bot" && (
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-muted" />
+                <Avatar>
+                  <AvatarImage src="https://github.com/bot.png" alt="Bot" />
+                  <AvatarFallback>B</AvatarFallback>
+                </Avatar>
               )}
               <div
                 className={`p-3 rounded-lg ${
@@ -85,7 +99,10 @@ const Chat = () => {
                 <p>{message.text}</p>
               </div>
               {message.sender === "user" && (
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-muted" />
+                <Avatar>
+                  <AvatarImage src="https://github.com/shadcn.png" alt="User" />
+                  <AvatarFallback>U</AvatarFallback>
+                </Avatar>
               )}
             </div>
           ))}
@@ -98,6 +115,7 @@ const Chat = () => {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+              className="text-white"
             />
             <Button onClick={handleSendMessage}>Send</Button>
           </div>
